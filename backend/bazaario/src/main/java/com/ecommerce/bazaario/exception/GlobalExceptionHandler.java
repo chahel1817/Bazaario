@@ -47,6 +47,16 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler({org.springframework.dao.PessimisticLockingFailureException.class, jakarta.persistence.PessimisticLockException.class})
+    public ResponseEntity<Map<String, Object>> handlePessimisticLockingFailure(Exception ex) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.CONFLICT.value());
+        body.put("error", "Conflict / High Demand");
+        body.put("message", "The product is under high demand. Please try placing your order again in a moment.");
+        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGlobal(Exception ex) {
         Map<String, Object> body = new LinkedHashMap<>();

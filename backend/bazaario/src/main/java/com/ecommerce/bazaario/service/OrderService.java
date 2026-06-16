@@ -28,6 +28,9 @@ public class OrderService {
     @Autowired
     private ProductRepository productRepository;
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     @Transactional
     public Order placeOrder(User user, Long addressId) {
         Cart cart = cartService.getCartByUser(user);
@@ -51,6 +54,9 @@ public class OrderService {
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (CartItem cartItem : cart.getItems()) {
+            // Detach the product from the persistence context to bypass the L1 cache
+            entityManager.detach(cartItem.getProduct());
+
             // Retrieve product with a pessimistic write lock to prevent race conditions on stock quantity
             Product product = productRepository.findByIdWithLock(cartItem.getProduct().getId())
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + cartItem.getProduct().getId()));
