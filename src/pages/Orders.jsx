@@ -9,6 +9,9 @@ export default function Orders() {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [activeTab, setActiveTab] = useState('All'); // All, Processing, Delivered, Cancelled
+  const [payingOrderId, setPayingOrderId] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -21,6 +24,75 @@ export default function Orders() {
       setFilteredOrders(orders.filter(o => o.status.toUpperCase() === activeTab.toUpperCase()));
     }
   }, [activeTab, orders]);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayNow = async (order) => {
+    setPayingOrderId(order.id);
+    try {
+      const paymentInitResponse = await api.post(`/api/payments/initiate?orderId=${order.id}`);
+      const rzpOrderData = paymentInitResponse.data;
+
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setErrorMsg("Razorpay SDK failed to load. Please check your network connection.");
+        setPayingOrderId(null);
+        return;
+      }
+
+      const options = {
+        key: 'rzp_test_T2Lj8d40gYcDTC',
+        amount: rzpOrderData.amount,
+        currency: rzpOrderData.currency,
+        name: 'Bazaario Inc.',
+        description: `Order Payment for #BZR-${order.id}`,
+        order_id: rzpOrderData.id,
+        handler: async function (response) {
+          try {
+            await api.post('/api/payments/verify', {
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              order_id: String(order.id)
+            });
+            setSelectedOrder(null);
+            fetchOrders();
+            setSuccessMsg(`Payment completed successfully for Order #BZR-${order.id}!`);
+          } catch (err) {
+            setErrorMsg("Payment verification failed on server: " + (err.response?.data?.message || err.message));
+          } finally {
+            setPayingOrderId(null);
+          }
+        },
+        prefill: {
+          name: '',
+          email: '',
+        },
+        theme: {
+          color: '#14b8a6',
+        },
+        modal: {
+          ondismiss: function () {
+            setPayingOrderId(null);
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      setErrorMsg(error.response?.data?.message || "Failed to initiate payment.");
+      setPayingOrderId(null);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -150,11 +222,20 @@ export default function Orders() {
                   ))}
                 </div>
 
-                <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
-                  <div className="text-right">
-                    <span className="text-[10px] text-gray-450 uppercase tracking-wider block font-bold">Total Amount</span>
+                <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto">
+                  <div className="text-right mr-2">
+                    <span className="text-[10px] text-gray-455 uppercase tracking-wider block font-bold">Total Amount</span>
                     <span className="text-sm font-extrabold text-bazaario-primary">₹{order.totalAmount.toFixed(2)}</span>
                   </div>
+                  {order.status.toUpperCase() === 'PENDING' && (
+                    <button
+                      onClick={() => handlePayNow(order)}
+                      disabled={payingOrderId === order.id}
+                      className="bg-bazaario-primary hover:bg-bazaario-primaryHover disabled:opacity-50 text-black text-xs font-extrabold px-5 py-2 rounded-full transition-all flex items-center gap-1.5"
+                    >
+                      {payingOrderId === order.id ? "Paying..." : "Pay Now"}
+                    </button>
+                  )}
                   <button
                     onClick={() => handleViewDetails(order.id)}
                     className="border border-bazaario-primary hover:bg-bazaario-primary hover:text-black text-bazaario-primary text-xs font-bold px-5 py-2 rounded-full transition-all flex items-center gap-1.5"
@@ -302,12 +383,67 @@ export default function Orders() {
                   <CreditCard size={12} className="text-bazaario-primary" /> Payment Method
                 </h4>
                 <p className="text-xs text-white font-bold uppercase">Razorpay Gateway (Test)</p>
+                {selectedOrder.status.toUpperCase() === 'PENDING' && (
+                  <button
+                    onClick={() => handlePayNow(selectedOrder)}
+                    disabled={payingOrderId === selectedOrder.id}
+                    className="w-full mt-2 bg-bazaario-primary hover:bg-bazaario-primaryHover disabled:opacity-50 text-black text-[11px] font-black py-2 rounded-lg transition-all uppercase tracking-wider flex items-center justify-center gap-1.5"
+                  >
+                    {payingOrderId === selectedOrder.id ? "Processing..." : "Complete Payment"}
+                  </button>
+                )}
                 
                 <div className="flex justify-between text-xs text-gray-400 pt-2 border-t border-[#1A1A24] mt-2">
                   <span>Grand Total</span>
                   <span className="text-bazaario-primary font-black">₹{selectedOrder.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Error Modal */}
+      {errorMsg && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-bazaario-card border border-red-500/20 rounded-3xl max-w-md w-full p-8 text-center space-y-6 shadow-[0_0_50px_rgba(239,68,68,0.15)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+              <span className="text-2xl font-black font-sans leading-none">!</span>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Payment Alert</h2>
+              <p className="text-gray-400 text-xs leading-relaxed">{errorMsg}</p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={() => setErrorMsg(null)}
+                className="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-white text-xs font-bold py-3.5 rounded-full transition-all uppercase tracking-wider"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Success Modal */}
+      {successMsg && (
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-bazaario-card border border-bazaario-primary/20 rounded-3xl max-w-md w-full p-8 text-center space-y-6 shadow-[0_0_50px_rgba(20,184,166,0.15)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-bazaario-primary/10 border border-bazaario-primary/30 text-bazaario-primary rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(20,184,166,0.1)]">
+              <span className="text-2xl font-black font-sans leading-none">✓</span>
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Success</h2>
+              <p className="text-gray-400 text-xs leading-relaxed">{successMsg}</p>
+            </div>
+            <div className="pt-2">
+              <button
+                onClick={() => setSuccessMsg(null)}
+                className="w-full bg-bazaario-primary hover:bg-bazaario-primaryHover text-black text-xs font-bold py-3.5 rounded-full transition-all uppercase tracking-wider"
+              >
+                Continue
+              </button>
             </div>
           </div>
         </div>
