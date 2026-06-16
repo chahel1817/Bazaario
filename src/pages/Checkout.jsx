@@ -30,6 +30,7 @@ export default function Checkout() {
   const [paying, setPaying] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successOrderDetails, setSuccessOrderDetails] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
 
   useEffect(() => {
     fetchAddresses();
@@ -64,7 +65,7 @@ export default function Checkout() {
       setIsDefault(false);
       setShowAddressForm(false);
     } catch (error) {
-      alert("Failed to add address");
+      setErrorMsg("Failed to add address");
     }
   };
 
@@ -80,7 +81,7 @@ export default function Checkout() {
 
   const handlePlaceOrder = async () => {
     if (!selectedAddressId) {
-      alert("Please select a delivery address.");
+      setErrorMsg("Please select a delivery address.");
       setCurrentStep(1);
       return;
     }
@@ -107,7 +108,7 @@ export default function Checkout() {
           });
           setShowSuccessModal(true);
         } catch (err) {
-          alert("COD payment registration failed: " + (err.response?.data?.message || err.message));
+          setErrorMsg("COD payment registration failed: " + (err.response?.data?.message || err.message));
         } finally {
           setPaying(false);
         }
@@ -120,7 +121,7 @@ export default function Checkout() {
 
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
-        alert("Razorpay SDK failed to load. Please check your network connection.");
+        setErrorMsg("Razorpay SDK failed to load. Please check your network connection.");
         setPaying(false);
         return;
       }
@@ -149,7 +150,7 @@ export default function Checkout() {
             });
             setShowSuccessModal(true);
           } catch (err) {
-            alert("Payment verification failed on server: " + (err.response?.data?.message || err.message));
+            setErrorMsg("Payment verification failed on server: " + (err.response?.data?.message || err.message));
           } finally {
             setPaying(false);
           }
@@ -171,7 +172,7 @@ export default function Checkout() {
       const rzp = new window.Razorpay(options);
       rzp.open();
     } catch (error) {
-      alert(error.response?.data?.message || "Failed to initiate payment. Please verify item stock.");
+      setErrorMsg(error.response?.data?.message || "Failed to initiate payment. Please verify item stock.");
       setPaying(false);
     }
   };
@@ -634,6 +635,31 @@ export default function Checkout() {
                 className="w-full border border-bazaario-border hover:border-bazaario-primary text-white hover:text-bazaario-primary text-xs font-bold py-3.5 rounded-full transition-all uppercase tracking-wider"
               >
                 Continue Shopping
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Premium Error Modal */}
+      {errorMsg && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-bazaario-card border border-red-500/20 rounded-3xl max-w-md w-full p-8 text-center space-y-6 shadow-[0_0_50px_rgba(239,68,68,0.15)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+              <span className="text-2xl font-black font-sans leading-none">!</span>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Action Failed</h2>
+              <p className="text-gray-400 text-xs leading-relaxed">{errorMsg}</p>
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setErrorMsg(null)}
+                className="w-full bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 hover:text-white text-xs font-bold py-3.5 rounded-full transition-all uppercase tracking-wider"
+              >
+                Dismiss
               </button>
             </div>
           </div>

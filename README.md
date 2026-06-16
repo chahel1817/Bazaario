@@ -124,3 +124,27 @@ Order statuses follow strict transition paths validated by the service layer:
 ```
 * Statuses are managed as the `OrderStatus` enum.
 * Violating status paths (e.g., trying to move a `DELIVERED` order back to `PENDING`) will result in a `400 Bad Request` validation error.
+
+---
+
+## 🛡️ Concurrency Deep-Dive: Stock Race Condition & L1 Cache Eviction
+
+### The Challenge
+In e-commerce platforms, checkout concurrency can cause race conditions. If two threads check the available stock of a product simultaneously (e.g., `stock = 1`) and verify it is sufficient, both can proceed to decrement the stock and save. This leads to **overselling** (negative stock counts) in the database.
+
+### The Solution: Pessimistic Write Locking & Persistence Context Detachment
+Bazaario implements a robust defense against this using database-level row locking:
+1. **Pessimistic Locking**: `ProductRepository.findByIdWithLock()` executes a database `SELECT ... FOR UPDATE` query. This locks the target row for write operations. Any concurrent thread requesting the same row is blocked until the first thread's transaction commits.
+2. **L1 Cache / Persistence Context Eviction**: Because Hibernate caches queried entities in its Session (L1 cache), calling `findByIdWithLock` normally returns the cached stale entity instance without blocking. To prevent this, Bazaario calls `entityManager.detach(cartItem.getProduct())` to evict the product from the current Session context before executing the query. This forces Hibernate to run the locking database query, wait for lock acquisition, and retrieve the latest committed state.
+
+### Proven by Multi-Threaded Integration Tests
+We implemented `OrderServiceConcurrencyTest` to verify this behavior under heavy load:
+* Two parallel threads use `ExecutorService` and coordinate via `CountDownLatch` to call `placeOrder()` simultaneously on a product with a single stock item (`stock = 1`).
+* **Assertion**: Exactly one thread successfully places the order, and the other thread receives a `400 BadRequestException` due to insufficient stock. The final stock is asserted to be exactly `0` (never negative).
+
+---
+
+## 🔮 Future Improvements & Known Limitations
+
+* **Auth Rate-Limiting**: To prevent brute-force attacks on `/api/auth/login`, implementing an attempt-counter and IP-based lockout (using Redis or Spring Security Rate Limiting) is planned as a future production enhancement.
+
