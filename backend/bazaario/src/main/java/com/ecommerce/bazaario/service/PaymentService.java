@@ -49,7 +49,8 @@ public class PaymentService {
             
             JSONObject orderRequest = new JSONObject();
             // amount is in paise (1 INR = 100 paise)
-            int amountInPaise = order.getTotalAmount().multiply(BigDecimal.valueOf(100)).intValue();
+            int amountInPaise = order.getTotalAmount().multiply(BigDecimal.valueOf(100))
+                    .setScale(0, java.math.RoundingMode.HALF_UP).intValueExact();
             orderRequest.put("amount", amountInPaise);
             orderRequest.put("currency", "INR");
             orderRequest.put("receipt", order.getId().toString());
@@ -82,6 +83,12 @@ public class PaymentService {
 
         if (razorpayOrderId == null || razorpayPaymentId == null || razorpaySignature == null || orderIdStr == null) {
             throw new BadRequestException("Missing payment verification details");
+        }
+
+        // Verify idempotency (check if payment was already processed)
+        java.util.Optional<Payment> existingPaymentOpt = paymentRepository.findByTransactionId(razorpayPaymentId);
+        if (existingPaymentOpt.isPresent()) {
+            return existingPaymentOpt.get();
         }
 
         // Verify Razorpay signature
@@ -119,7 +126,7 @@ public class PaymentService {
         payment.setTransactionId(razorpayPaymentId);
         payment.setAmount(order.getTotalAmount());
         
-        order.setStatus("PROCESSING"); // Mark order as confirmed / processing
+        order.setStatus(com.ecommerce.bazaario.entity.OrderStatus.PROCESSING); // Mark order as confirmed / processing
         orderRepository.save(order);
 
         // Clear cart after payment verification
@@ -154,7 +161,7 @@ public class PaymentService {
         payment.setTransactionId("COD_" + orderId);
         payment.setAmount(order.getTotalAmount());
         
-        order.setStatus("PROCESSING"); // Mark order as confirmed / processing
+        order.setStatus(com.ecommerce.bazaario.entity.OrderStatus.PROCESSING); // Mark order as confirmed / processing
         orderRepository.save(order);
 
         // Clear cart for COD orders

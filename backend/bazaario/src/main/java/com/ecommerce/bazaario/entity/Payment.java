@@ -27,7 +27,7 @@ public class Payment {
     @Column(name = "payment_status", nullable = false)
     private String paymentStatus; // PENDING, COMPLETED, FAILED
 
-    @Column(name = "transaction_id")
+    @Column(name = "transaction_id", unique = true)
     private String transactionId;
 
     @Column(nullable = false)

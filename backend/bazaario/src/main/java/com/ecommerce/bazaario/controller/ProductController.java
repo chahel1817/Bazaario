@@ -28,6 +28,9 @@ public class ProductController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "asc") String direction) {
 
+        if (size > 100) {
+            size = 100;
+        }
         Sort sort = direction.equalsIgnoreCase("desc") ? Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
         return ResponseEntity.ok(productService.getAllProducts(categoryId, search, pageable));

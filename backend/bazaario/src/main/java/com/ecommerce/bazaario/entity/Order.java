@@ -26,8 +26,9 @@ public class Order {
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private String status; // PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED
+    private OrderStatus status;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "address_id")

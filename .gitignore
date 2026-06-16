@@ -25,3 +25,30 @@ dist-ssr
 
 # Scratch directory
 scratch/
+
+# Backend Build & Package Outputs
+**/target/
+**/*.jar
+**/*.war
+**/*.ear
+**/*.zip
+**/*.tar.gz
+
+# Backend Maven Wrapper
+**/.mvn/
+**/mvnw
+**/mvnw.cmd
+
+# Backend IDE / Project Metadata
+**/.classpath
+**/.project
+**/.settings/
+**/.idea/
+**/*.iml
+**/*.iws
+**/*.ipr
+
+# Backend Configuration / Environment overrides
+**/application-local.properties
+**/.env
+**/.env.local

@@ -45,13 +45,16 @@ public class OrderService {
         Order order = new Order();
         order.setUser(user);
         order.setAddress(address);
-        order.setStatus("PENDING");
+        order.setStatus(OrderStatus.PENDING);
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
         for (CartItem cartItem : cart.getItems()) {
-            Product product = cartItem.getProduct();
+            // Retrieve product with a pessimistic write lock to prevent race conditions on stock quantity
+            Product product = productRepository.findByIdWithLock(cartItem.getProduct().getId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + cartItem.getProduct().getId()));
+
             if (product.getStockQty() < cartItem.getQuantity()) {
                 throw new BadRequestException("Insufficient stock for product: " + product.getName() + 
                         ". Available stock: " + product.getStockQty());
@@ -91,6 +94,9 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
+        // Clear cart right after the order is successfully placed (prevents double-ordering or check-out abandonment issues)
+        cartService.clearCart(cart);
+
         return savedOrder;
     }
 
@@ -98,14 +104,17 @@ public class OrderService {
         return orderRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
     }
 
+    public void validateOrderAccess(Order order, User user) {
+        if (!order.getUser().getId().equals(user.getId()) && !"ROLE_ADMIN".equals(user.getRole())) {
+            throw new BadRequestException("Unauthorized access to this order");
+        }
+    }
+
     public Order getOrderDetails(User user, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
 
-        // Allow only the owner or an admin to view details
-        if (!order.getUser().getId().equals(user.getId()) && !"ROLE_ADMIN".equals(user.getRole())) {
-            throw new BadRequestException("Unauthorized access to this order details");
-        }
+        validateOrderAccess(order, user);
 
         return order;
     }
@@ -115,7 +124,19 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
 
-        order.setStatus(status);
+        OrderStatus newStatus;
+        try {
+            newStatus = OrderStatus.valueOf(status.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid order status: " + status);
+        }
+
+        OrderStatus currentStatus = order.getStatus();
+        if (!currentStatus.isValidTransition(newStatus)) {
+            throw new BadRequestException("Invalid status transition from " + currentStatus + " to " + newStatus);
+        }
+
+        order.setStatus(newStatus);
         return orderRepository.save(order);
     }
 }

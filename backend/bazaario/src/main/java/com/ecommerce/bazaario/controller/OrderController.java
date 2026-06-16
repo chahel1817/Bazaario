@@ -8,6 +8,7 @@ import com.ecommerce.bazaario.service.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -40,6 +41,7 @@ public class OrderController {
     }
 
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Order> updateOrderStatus(@PathVariable Long id, @RequestParam String status) {
         return ResponseEntity.ok(orderService.updateOrderStatus(id, status));
     }
