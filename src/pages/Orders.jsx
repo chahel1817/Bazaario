@@ -12,6 +12,9 @@ export default function Orders() {
   const [payingOrderId, setPayingOrderId] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState(false);
+  const [orderToPay, setOrderToPay] = useState(null);
+  const [paymentMethodSelection, setPaymentMethodSelection] = useState('Online');
 
   useEffect(() => {
     fetchOrders();
@@ -33,6 +36,36 @@ export default function Orders() {
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
     });
+  };
+
+  const triggerPaymentMethodSelection = (order) => {
+    setOrderToPay(order);
+    setPaymentMethodSelection('Online');
+    setShowPaymentMethodModal(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    if (!orderToPay) return;
+    setShowPaymentMethodModal(false);
+    
+    if (paymentMethodSelection === 'COD') {
+      setPayingOrderId(orderToPay.id);
+      try {
+        await api.post(`/api/payments/cod?orderId=${orderToPay.id}`);
+        setSelectedOrder(null);
+        fetchOrders();
+        setSuccessMsg(`Payment completed successfully via Cash on Delivery for Order #BZR-${orderToPay.id}!`);
+      } catch (err) {
+        setErrorMsg("COD payment registration failed: " + (err.response?.data?.message || err.message));
+      } finally {
+        setPayingOrderId(null);
+        setOrderToPay(null);
+      }
+    } else {
+      const orderRef = orderToPay;
+      setOrderToPay(null);
+      handlePayNow(orderRef);
+    }
   };
 
   const handlePayNow = async (order) => {
@@ -229,7 +262,7 @@ export default function Orders() {
                   </div>
                   {order.status.toUpperCase() === 'PENDING' && (
                     <button
-                      onClick={() => handlePayNow(order)}
+                      onClick={() => triggerPaymentMethodSelection(order)}
                       disabled={payingOrderId === order.id}
                       className="bg-bazaario-primary hover:bg-bazaario-primaryHover disabled:opacity-50 text-black text-xs font-extrabold px-5 py-2 rounded-full transition-all flex items-center gap-1.5"
                     >
@@ -385,7 +418,7 @@ export default function Orders() {
                 <p className="text-xs text-white font-bold uppercase">Razorpay Gateway (Test)</p>
                 {selectedOrder.status.toUpperCase() === 'PENDING' && (
                   <button
-                    onClick={() => handlePayNow(selectedOrder)}
+                    onClick={() => triggerPaymentMethodSelection(selectedOrder)}
                     disabled={payingOrderId === selectedOrder.id}
                     className="w-full mt-2 bg-bazaario-primary hover:bg-bazaario-primaryHover disabled:opacity-50 text-black text-[11px] font-black py-2 rounded-lg transition-all uppercase tracking-wider flex items-center justify-center gap-1.5"
                   >
@@ -443,6 +476,72 @@ export default function Orders() {
                 className="w-full bg-bazaario-primary hover:bg-bazaario-primaryHover text-black text-xs font-bold py-3.5 rounded-full transition-all uppercase tracking-wider"
               >
                 Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Payment Method Selection Modal */}
+      {showPaymentMethodModal && orderToPay && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-bazaario-card border border-bazaario-border rounded-3xl max-w-md w-full p-8 space-y-6 shadow-[0_0_50px_rgba(20,184,166,0.1)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center space-y-2">
+              <h2 className="text-xl font-black text-white uppercase tracking-wider">Select Payment Method</h2>
+              <p className="text-gray-400 text-xs">Choose how you want to complete payment for Order #BZR-{orderToPay.id}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div
+                onClick={() => setPaymentMethodSelection('Online')}
+                className={`p-5 rounded-xl border cursor-pointer text-center relative transition-all flex flex-col items-center justify-center space-y-2 ${
+                  paymentMethodSelection === 'Online'
+                    ? 'border-bazaario-primary bg-bazaario-primary/5'
+                    : 'border-bazaario-border bg-[#0A0A0C] hover:border-gray-800'
+                }`}
+              >
+                {paymentMethodSelection === 'Online' && (
+                  <span className="absolute top-2 right-2 p-0.5 bg-bazaario-primary text-black rounded-full">
+                    <CheckCircle size={10} className="stroke-[2.5]" />
+                  </span>
+                )}
+                <CreditCard size={18} className="text-bazaario-primary" />
+                <span className="text-xs font-bold text-white">Online Payment</span>
+              </div>
+
+              <div
+                onClick={() => setPaymentMethodSelection('COD')}
+                className={`p-5 rounded-xl border cursor-pointer text-center relative transition-all flex flex-col items-center justify-center space-y-2 ${
+                  paymentMethodSelection === 'COD'
+                    ? 'border-bazaario-primary bg-bazaario-primary/5'
+                    : 'border-bazaario-border bg-[#0A0A0C] hover:border-gray-800'
+                }`}
+              >
+                {paymentMethodSelection === 'COD' && (
+                  <span className="absolute top-2 right-2 p-0.5 bg-bazaario-primary text-black rounded-full">
+                    <CheckCircle size={10} className="stroke-[2.5]" />
+                  </span>
+                )}
+                <ShoppingBag size={18} className="text-bazaario-primary" />
+                <span className="text-xs font-bold text-white">Cash on Delivery</span>
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-2">
+              <button
+                onClick={handleConfirmPayment}
+                className="flex-1 bg-bazaario-primary hover:bg-bazaario-primaryHover text-black text-xs font-black py-3 rounded-full transition-all uppercase tracking-wider"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => {
+                  setShowPaymentMethodModal(false);
+                  setOrderToPay(null);
+                }}
+                className="flex-1 border border-bazaario-border hover:border-gray-700 text-white text-xs font-bold py-3 rounded-full transition-all uppercase tracking-wider"
+              >
+                Cancel
               </button>
             </div>
           </div>
