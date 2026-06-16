@@ -287,30 +287,149 @@ export default function ProductDetails() {
         {/* Tab content area */}
         <div className="text-sm leading-relaxed text-gray-400">
           {activeTab === 'description' && (
-            <div className="space-y-4">
-              <p>{product.description}</p>
-              <p>Experience peak performance and modern styling aesthetics, crafted for reliability and durability in everyday settings.</p>
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <h4 className="text-xs text-bazaario-primary font-bold uppercase tracking-widest">Product Overview</h4>
+                <p className="text-sm text-gray-300 leading-relaxed">{product.description}</p>
+                <p className="text-sm text-gray-400 leading-relaxed">
+                  Every aspect of this product has been tested to meet strict quality and safety certifications. It combines state-of-the-art ergonomics with top-grade raw materials to deliver maximum utility and long-lasting durability.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-bazaario-card border border-bazaario-border p-4 rounded-xl space-y-1">
+                  <h5 className="text-[10px] font-bold text-white uppercase tracking-wider">Premium Build</h5>
+                  <p className="text-gray-500 text-[10px]">Constructed from durable, premium materials for high load capacity.</p>
+                </div>
+                <div className="bg-bazaario-card border border-bazaario-border p-4 rounded-xl space-y-1">
+                  <h5 className="text-[10px] font-bold text-white uppercase tracking-wider">Ergonomic Design</h5>
+                  <p className="text-gray-500 text-[10px]">Specifically configured for optimal comfort and intuitive daily handling.</p>
+                </div>
+                <div className="bg-bazaario-card border border-bazaario-border p-4 rounded-xl space-y-1">
+                  <h5 className="text-[10px] font-bold text-white uppercase tracking-wider">Certified Safe</h5>
+                  <p className="text-gray-500 text-[10px]">Undergoes multiple performance validation checks before dispatch.</p>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'specs' && (
-            <div className="max-w-md bg-bazaario-card border border-bazaario-border p-6 rounded-2xl">
-              <table className="w-full text-xs">
-                <tbody>
-                  <tr className="border-b border-bazaario-border pb-2">
-                    <td className="py-2 text-gray-450 font-bold uppercase tracking-wider">Category</td>
-                    <td className="py-2 text-white font-medium">{product.category?.name}</td>
-                  </tr>
-                  <tr className="border-b border-bazaario-border">
-                    <td className="py-2 text-gray-455 font-bold uppercase tracking-wider">Model ID</td>
-                    <td className="py-2 text-white font-medium">BZR-{product.id}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 text-gray-455 font-bold uppercase tracking-wider">Availability</td>
-                    <td className="py-2 text-emerald-450 font-bold uppercase tracking-wider">In Stock</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-bazaario-card border border-bazaario-border p-6 rounded-2xl space-y-4">
+                <h4 className="text-xs text-bazaario-primary font-bold uppercase tracking-widest">Technical Specifications</h4>
+                <table className="w-full text-xs">
+                  <tbody>
+                    <tr className="border-b border-bazaario-border pb-2">
+                      <td className="py-2 text-gray-400 font-semibold">Category</td>
+                      <td className="py-2 text-white font-medium">{product.category?.name}</td>
+                    </tr>
+                    <tr className="border-b border-bazaario-border">
+                      <td className="py-2 text-gray-400 font-semibold">Model ID</td>
+                      <td className="py-2 text-white font-medium font-mono">BZR-{product.id}</td>
+                    </tr>
+                    <tr className="border-b border-bazaario-border">
+                      <td className="py-2 text-gray-400 font-semibold">Stock Availability</td>
+                      <td className="py-2 text-emerald-500 font-bold">In Stock ({product.stockQty} Units)</td>
+                    </tr>
+                    {(() => {
+                      const category = product.category?.name || "";
+                      if (category === "Electronics") {
+                        return (
+                          <>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Connectivity</td><td className="py-2 text-white">Bluetooth 5.3 & Wi-Fi Direct</td></tr>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Battery Life</td><td className="py-2 text-white">Up to 48 Hours playback</td></tr>
+                            <tr><td className="py-2 text-gray-400 font-semibold">Charging</td><td className="py-2 text-white">USB Type-C HyperFast Charging</td></tr>
+                          </>
+                        );
+                      }
+                      if (category === "Fashion") {
+                        return (
+                          <>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Material</td><td className="py-2 text-white">100% Organic Combed Cotton</td></tr>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Fit Type</td><td className="py-2 text-white">Regular Fit / Pre-shrunk wear</td></tr>
+                            <tr><td className="py-2 text-gray-400 font-semibold">Care Instructions</td><td className="py-2 text-white">Machine wash cold, tumble dry low</td></tr>
+                          </>
+                        );
+                      }
+                      if (category === "Beauty") {
+                        return (
+                          <>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Skin Type</td><td className="py-2 text-white">All skin types, dermatologically tested</td></tr>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Net Weight / Vol</td><td className="py-2 text-white">150 mL / 5.1 fl. oz</td></tr>
+                            <tr><td className="py-2 text-gray-400 font-semibold">Certificates</td><td className="py-2 text-white">100% Vegan, Cruelty-Free, Paraben-Free</td></tr>
+                          </>
+                        );
+                      }
+                      if (category === "Home & Living") {
+                        return (
+                          <>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Material</td><td className="py-2 text-white">Sustainably sourced premium wood/textile</td></tr>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Assembly</td><td className="py-2 text-white">Easy tool-less setup instruction manual</td></tr>
+                            <tr><td className="py-2 text-gray-400 font-semibold">Weight Limit</td><td className="py-2 text-white">Supports up to 120 kg safely</td></tr>
+                          </>
+                        );
+                      }
+                      if (category === "Sports") {
+                        return (
+                          <>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Sport Type</td><td className="py-2 text-white">Fitness, Outdoor & Multi-sport tracking ready</td></tr>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Water Resistance</td><td className="py-2 text-white">Sweatproof & IPX4 Splashproof resistance</td></tr>
+                            <tr><td className="py-2 text-gray-400 font-semibold">Grip material</td><td className="py-2 text-white">Ergonomic anti-slip textured silicone</td></tr>
+                          </>
+                        );
+                      }
+                      if (category === "Gaming") {
+                        return (
+                          <>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Platform</td><td className="py-2 text-white">PC, PS5, Xbox Series X/S, Switch</td></tr>
+                            <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Lighting</td><td className="py-2 text-white">Dynamic 16.8M Color Aura RGB synchronization</td></tr>
+                            <tr><td className="py-2 text-gray-400 font-semibold">Response Rate</td><td className="py-2 text-white">Ultra-low 1ms Latency Response Switch</td></tr>
+                          </>
+                        );
+                      }
+                      return (
+                        <>
+                          <tr className="border-b border-bazaario-border"><td className="py-2 text-gray-400 font-semibold">Origin</td><td className="py-2 text-white">Imported</td></tr>
+                          <tr><td className="py-2 text-gray-400 font-semibold">Warranty</td><td className="py-2 text-white">1-Year Bazaario Domestic Warranty</td></tr>
+                        </>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Shopping Promises */}
+              <div className="bg-bazaario-card border border-bazaario-border p-6 rounded-2xl space-y-4 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <h4 className="text-xs text-bazaario-primary font-bold uppercase tracking-widest">Bazaario Promises</h4>
+                  <ul className="text-xs space-y-3">
+                    <li className="flex items-start gap-2.5">
+                      <span className="text-emerald-500 font-bold">⚡</span>
+                      <div>
+                        <p className="text-white font-bold">Free Metro Express Delivery</p>
+                        <p className="text-gray-500 text-[10px]">Get it delivered within 24-48 hours in major metropolitan cities.</p>
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span className="text-bazaario-primary font-bold">🛡️</span>
+                      <div>
+                        <p className="text-white font-bold">100% Secured Payments</p>
+                        <p className="text-gray-500 text-[10px]">Secure transactions with industry-standard Razorpay Gateway or Cash on Delivery.</p>
+                      </div>
+                    </li>
+                    <li className="flex items-start gap-2.5">
+                      <span className="text-blue-500 font-bold">🔄</span>
+                      <div>
+                        <p className="text-white font-bold">7-Day Easy Returns</p>
+                        <p className="text-gray-500 text-[10px]">Not satisfied? Return or exchange hassle-free within 7 days of delivery.</p>
+                      </div>
+                    </li>
+                  </ul>
+                </div>
+                <div className="border-t border-[#1A1A24] pt-3 text-[10px] text-gray-500">
+                  * Terms and conditions apply. Warranty cards included inside the packaging box.
+                </div>
+              </div>
             </div>
           )}
 

@@ -28,6 +28,8 @@ export default function Checkout() {
 
   // Razorpay payment integration states
   const [paying, setPaying] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successOrderDetails, setSuccessOrderDetails] = useState(null);
 
   useEffect(() => {
     fetchAddresses();
@@ -88,13 +90,22 @@ export default function Checkout() {
       const orderResponse = await api.post('/api/orders', { addressId: selectedAddressId });
       const createdOrder = orderResponse.data;
 
+      const gst = cartTotal * 0.05;
+      const platformFee = cartTotal < 50 ? 0.99 : (cartTotal < 150 ? 1.99 : 2.99);
+      const calculatedTotal = cartTotal + gst + platformFee;
+
       if (selectedPaymentMethod === 'COD') {
         // Handle Cash on Delivery (COD)
         try {
           await api.post(`/api/payments/cod?orderId=${createdOrder.id}`);
           clearCartState();
-          alert("Order Placed Successfully! Payment mode: Cash on Delivery.");
-          navigate('/orders');
+          setSuccessOrderDetails({
+            id: createdOrder.id,
+            totalAmount: createdOrder.totalAmount || calculatedTotal,
+            paymentMethod: 'Cash on Delivery (COD)',
+            address: addresses.find(a => a.id === selectedAddressId)
+          });
+          setShowSuccessModal(true);
         } catch (err) {
           alert("COD payment registration failed: " + (err.response?.data?.message || err.message));
         } finally {
@@ -130,10 +141,17 @@ export default function Checkout() {
               order_id: String(createdOrder.id)
             });
             clearCartState();
-            alert("Payment Successful! Your order has been placed.");
-            navigate('/orders');
+            setSuccessOrderDetails({
+              id: createdOrder.id,
+              totalAmount: createdOrder.totalAmount || calculatedTotal,
+              paymentMethod: 'Online Payment (Razorpay)',
+              address: addresses.find(a => a.id === selectedAddressId)
+            });
+            setShowSuccessModal(true);
           } catch (err) {
             alert("Payment verification failed on server: " + (err.response?.data?.message || err.message));
+          } finally {
+            setPaying(false);
           }
         },
         prefill: {
@@ -558,6 +576,69 @@ export default function Checkout() {
           })()}
         </div>
       </div>
+
+      {/* Neat Success Modal */}
+      {showSuccessModal && successOrderDetails && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-bazaario-card border border-bazaario-primary/20 rounded-3xl max-w-md w-full p-8 text-center space-y-6 shadow-[0_0_50px_rgba(20,184,166,0.15)]">
+            <div className="w-16 h-16 bg-bazaario-primary/10 border border-bazaario-primary/30 text-bazaario-primary rounded-full flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(20,184,166,0.1)]">
+              <Check size={32} className="stroke-[3]" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl font-black text-white">Order Confirmed!</h2>
+              <p className="text-gray-400 text-xs">Thank you for your purchase. Your order is now processing.</p>
+            </div>
+
+            <div className="bg-[#0A0A0C] border border-bazaario-border p-5 rounded-2xl text-left space-y-3.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Order ID</span>
+                <span className="text-white font-mono font-bold">#BZR-{successOrderDetails.id}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Amount Paid</span>
+                <span className="text-bazaario-primary font-extrabold text-sm">₹{successOrderDetails.totalAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-gray-500 font-bold uppercase tracking-wider text-[10px]">Payment Mode</span>
+                <span className="text-white font-bold uppercase tracking-wider text-[9px] bg-bazaario-primary/10 px-2 py-0.5 rounded border border-bazaario-primary/20">
+                  {successOrderDetails.paymentMethod}
+                </span>
+              </div>
+              
+              {successOrderDetails.address && (
+                <div className="pt-3 border-t border-bazaario-border space-y-1 text-xs">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[9px] block">Shipping Address</span>
+                  <p className="text-gray-300 leading-relaxed text-[11px]">
+                    {successOrderDetails.address.street}, {successOrderDetails.address.city}, {successOrderDetails.address.state} - {successOrderDetails.address.pincode}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate('/orders');
+                }}
+                className="w-full bg-bazaario-primary hover:bg-bazaario-primaryHover text-black text-xs font-black py-3.5 rounded-full transition-all uppercase tracking-wider shadow-lg flex items-center justify-center gap-1.5"
+              >
+                Track Your Order
+              </button>
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate('/shop');
+                }}
+                className="w-full border border-bazaario-border hover:border-bazaario-primary text-white hover:text-bazaario-primary text-xs font-bold py-3.5 rounded-full transition-all uppercase tracking-wider"
+              >
+                Continue Shopping
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

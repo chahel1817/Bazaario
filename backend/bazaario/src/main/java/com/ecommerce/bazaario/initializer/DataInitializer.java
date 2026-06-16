@@ -118,8 +118,8 @@ public class DataInitializer implements CommandLineRunner {
         boolean alreadyCustomSeeded = false;
         if (currentCount > 0) {
             boolean hasHighPrices = productRepository.findAll().stream()
-                    .anyMatch(p -> p.getPrice().doubleValue() > 200.0);
-            alreadyCustomSeeded = !hasHighPrices;
+                    .anyMatch(p -> p.getPrice().doubleValue() > 1000.0);
+            alreadyCustomSeeded = hasHighPrices;
         }
 
         if (currentCount >= 1000 && alreadyCustomSeeded) {
@@ -167,9 +167,11 @@ public class DataInitializer implements CommandLineRunner {
             for (int j = 0; j < countForCategory; j++) {
                 Product p = new Product();
                 p.setName(generateProductName(cat.getName(), j, faker));
-                p.setDescription(faker.lorem().paragraph(2));
+                p.setDescription(generateProductDescription(cat.getName(), p.getName()));
 
-                double priceVal = 9.99 + (140.00 * random.nextDouble());
+                // Convert price to INR (~83.0 exchange rate)
+                double basePriceVal = 9.99 + (140.00 * random.nextDouble());
+                double priceVal = basePriceVal * 83.0;
                 p.setPrice(BigDecimal.valueOf(priceVal).setScale(2, RoundingMode.HALF_UP));
                 p.setStockQty(random.nextInt(120) + 10);
                 p.setCategory(cat);
@@ -317,5 +319,25 @@ public class DataInitializer implements CommandLineRunner {
         String prefix = prefixes[index % prefixes.length];
         String suffix = suffixes[faker.random().nextInt(suffixes.length)];
         return prefix + " " + item + " " + suffix;
+    }
+
+    private String generateProductDescription(String categoryName, String productName) {
+        String base = "This high-quality " + productName + " is designed to deliver outstanding performance and exceptional utility. ";
+        switch (categoryName) {
+            case "Electronics":
+                return base + "Featuring cutting-edge smart connectivity, ultra-low latency, and advanced power management to keep your workflow seamless. Built with robust, heat-resistant components that ensure long-lasting durability for daily intensive tasks.";
+            case "Fashion":
+                return base + "Crafted from premium, breathable organic materials that offer a perfect blend of modern fashion aesthetics and everyday comfort. Designed with precision stitching and a versatile silhouette suitable for both casual outings and evening gatherings.";
+            case "Beauty":
+                return base + "Formulated with pure, skin-loving botanical ingredients and essential minerals to nourish and revitalize your natural glow. Safe for all skin types, dermatologically tested, and free from harmful parabens or synthetic additives.";
+            case "Home & Living":
+                return base + "Designed to elevate your indoor living space with modern minimalist aesthetics and structural stability. Built using sustainably sourced materials, offering functional storage and space-saving ergonomics to complement any decor.";
+            case "Sports":
+                return base + "Engineered for maximum athletic endurance and impact resistance under demanding weather conditions. Features slip-resistant grips and moisture-wicking technology to help you push your limits during intense workout sessions.";
+            case "Gaming":
+                return base + "Optimized for competitive esports gameplay with ultra-responsive mechanical switches, customizable dynamic RGB lighting, and tactile control. Ergonomically designed to reduce strain during extended, high-intensity gaming sessions.";
+            default:
+                return base + "Crafted to meet the highest standards of reliability, safety, and modern design. Ideal for adding value and premium comfort to your daily routines.";
+        }
     }
 }
