@@ -36,6 +36,9 @@ public class PaymentService {
     @Value("${razorpay.api.secret}")
     private String apiSecret;
 
+    @Value("${razorpay.webhook.secret:your_webhook_secret}")
+    private String webhookSecret;
+
     public Map<String, Object> initiatePayment(User user, Long orderId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BadRequestException("Order not found"));
@@ -173,5 +176,70 @@ public class PaymentService {
         }
 
         return paymentRepository.save(payment);
+    }
+
+    @Transactional
+    public void processWebhook(String payload, String signatureHeader) {
+        // Validate signature
+        try {
+            boolean isValid = Utils.verifyWebhookSignature(payload, signatureHeader, webhookSecret);
+            if (!isValid) {
+                throw new BadRequestException("Invalid webhook signature");
+            }
+        } catch (RazorpayException e) {
+            throw new BadRequestException("Webhook signature verification failed: " + e.getMessage());
+        }
+
+        JSONObject json = new JSONObject(payload);
+        String event = json.optString("event");
+        if ("order.paid".equals(event) || "payment.captured".equals(event)) {
+            JSONObject eventPayload = json.optJSONObject("payload");
+            if (eventPayload != null) {
+                JSONObject rzpPayment = eventPayload.optJSONObject("payment");
+                JSONObject rzpOrder = eventPayload.optJSONObject("order");
+
+                if (rzpPayment != null && rzpOrder != null) {
+                    JSONObject paymentEntity = rzpPayment.optJSONObject("entity");
+                    JSONObject orderEntity = rzpOrder.optJSONObject("entity");
+
+                    if (paymentEntity != null && orderEntity != null) {
+                        String razorpayPaymentId = paymentEntity.optString("id");
+                        String internalOrderIdStr = orderEntity.optString("receipt");
+                        double amountInPaise = paymentEntity.optDouble("amount", 0);
+
+                        if (internalOrderIdStr != null && !internalOrderIdStr.isEmpty()) {
+                            try {
+                                Long orderId = Long.parseLong(internalOrderIdStr);
+                                Order order = orderRepository.findById(orderId).orElse(null);
+                                if (order != null) {
+                                    // Verify if payment already processed
+                                    java.util.Optional<Payment> existingPaymentOpt = paymentRepository.findByTransactionId(razorpayPaymentId);
+                                    if (existingPaymentOpt.isEmpty()) {
+                                        Payment payment = paymentRepository.findByOrderId(order.getId())
+                                                .orElseGet(() -> {
+                                                    Payment p = new Payment();
+                                                    p.setOrder(order);
+                                                    return p;
+                                                });
+
+                                        payment.setPaymentMethod("RAZORPAY_WEBHOOK");
+                                        payment.setPaymentStatus("COMPLETED");
+                                        payment.setTransactionId(razorpayPaymentId);
+                                        payment.setAmount(BigDecimal.valueOf(amountInPaise / 100.0));
+
+                                        order.setStatus(com.ecommerce.bazaario.entity.OrderStatus.PROCESSING);
+                                        orderRepository.save(order);
+                                        paymentRepository.save(payment);
+                                        System.out.println("Successfully processed payment webhook for Order ID: " + orderId);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                System.err.println("Failed to process webhook order payload: " + e.getMessage());
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

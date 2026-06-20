@@ -36,4 +36,12 @@ public class PaymentController {
         User user = authService.getCurrentUser();
         return ResponseEntity.ok(paymentService.completeCODPayment(user, orderId));
     }
+
+    @PostMapping("/webhook")
+    public ResponseEntity<Void> razorpayWebhook(
+            @RequestBody String payload,
+            @RequestHeader("X-Razorpay-Signature") String signatureHeader) {
+        paymentService.processWebhook(payload, signatureHeader);
+        return ResponseEntity.ok().build();
+    }
 }
