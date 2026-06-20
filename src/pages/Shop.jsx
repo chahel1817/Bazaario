@@ -5,6 +5,32 @@ import api from '../api';
 import { useCart } from '../context/CartContext';
 import { getProductFallbackImage } from '../imageHelper';
 
+const ProductSkeleton = () => (
+  <div className="glass-panel rounded-2xl p-4 flex flex-col space-y-4 animate-pulse">
+    {/* Image container skeleton */}
+    <div className="relative aspect-square bg-white/5 rounded-xl flex items-center justify-center">
+      <div className="w-1/2 h-1/2 bg-white/10 rounded-full"></div>
+    </div>
+    {/* Info skeletons */}
+    <div className="space-y-3 flex-grow flex flex-col justify-between">
+      <div className="space-y-2">
+        <div className="h-3 w-1/4 bg-bazaario-primary/20 rounded"></div>
+        <div className="h-4 w-3/4 bg-white/10 rounded"></div>
+      </div>
+      <div className="flex gap-1">
+        {[1, 2, 3, 4, 5].map((s) => (
+          <div key={s} className="w-3 h-3 bg-white/10 rounded-full animate-pulse"></div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2 pt-2">
+        <div className="h-4 w-1/3 bg-white/10 rounded"></div>
+        <div className="h-3 w-1/4 bg-white/5 rounded"></div>
+      </div>
+      <div className="h-9 w-full bg-white/10 rounded-full mt-3"></div>
+    </div>
+  </div>
+);
+
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -15,6 +41,8 @@ export default function Shop() {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
   // Local state for wishlisted items to simulate wishlist toggling
   const [wishlist, setWishlist] = useState(() => {
@@ -28,9 +56,10 @@ export default function Shop() {
 
   const categoryIdParam = searchParams.get('category') || '';
   const searchParam = searchParams.get('search') || '';
-  const pageParam = parseInt(searchParams.get('page') || '0', 10);
   const sortByParam = searchParams.get('sortBy') || 'id';
   const directionParam = searchParams.get('direction') || 'asc';
+
+  const observerTarget = React.useRef(null);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -44,11 +73,18 @@ export default function Shop() {
     fetchCategories();
   }, []);
 
+  // Reset product listing and page when any filter parameters change
+  useEffect(() => {
+    setProducts([]);
+    setPage(0);
+    setHasMore(true);
+  }, [categoryIdParam, searchParam, sortByParam, directionParam, maxPrice]);
+
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        let url = `/api/products?page=${pageParam}&size=8&sortBy=${sortByParam}&direction=${directionParam}`;
+        let url = `/api/products?page=${page}&size=8&sortBy=${sortByParam}&direction=${directionParam}`;
         if (categoryIdParam && categoryIdParam !== 'all') {
           url += `&categoryId=${categoryIdParam}`;
         }
@@ -57,15 +93,22 @@ export default function Shop() {
         }
         const response = await api.get(url);
         
-        // Filter locally by price and simulated rating if set
         let fetchedList = response.data.content || [];
         if (maxPrice < 1000) {
           fetchedList = fetchedList.filter(p => p.price <= maxPrice);
         }
         
-        setProducts(fetchedList);
-        setTotalPages(response.data.totalPages || 0);
+        setProducts(prev => {
+          // Avoid duplicate keys
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNew = fetchedList.filter(p => !existingIds.has(p.id));
+          return page === 0 ? fetchedList : [...prev, ...uniqueNew];
+        });
+        
+        const currentTotalPages = response.data.totalPages || 0;
+        setTotalPages(currentTotalPages);
         setTotalElements(response.data.totalElements || 0);
+        setHasMore(page < currentTotalPages - 1);
       } catch (error) {
         console.error("Failed to load products", error);
       } finally {
@@ -73,7 +116,28 @@ export default function Shop() {
       }
     };
     fetchProducts();
-  }, [categoryIdParam, searchParam, pageParam, sortByParam, directionParam, maxPrice]);
+  }, [categoryIdParam, searchParam, page, sortByParam, directionParam, maxPrice]);
+
+  useEffect(() => {
+    if (!observerTarget.current) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(observerTarget.current);
+
+    return () => {
+      if (observerTarget.current) {
+        observer.unobserve(observerTarget.current);
+      }
+    };
+  }, [hasMore, loading]);
 
   const updateFilters = (newParams) => {
     const params = new URLSearchParams(searchParams);
@@ -84,9 +148,6 @@ export default function Shop() {
         params.set(key, newParams[key]);
       }
     });
-    if (!newParams.hasOwnProperty('page')) {
-      params.set('page', '0');
-    }
     setSearchParams(params);
   };
 
@@ -266,10 +327,10 @@ export default function Shop() {
 
           {/* Right Product Grid */}
           <main className="flex-grow w-full">
-            {loading ? (
+            {products.length === 0 && loading ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <div key={n} className="glass-panel h-80 rounded-2xl animate-pulse"></div>
+                  <ProductSkeleton key={n} />
                 ))}
               </div>
             ) : products.length === 0 ? (
@@ -283,108 +344,102 @@ export default function Shop() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
-                {products.map((product) => {
-                  const isDeal = product.onDeal;
-                  const discountRate = product.discountPercent;
-                  const originalPrice = isDeal ? (product.price / (1 - (discountRate / 100))) : (product.price * 1.25);
-                  const isWishlisted = !!wishlist[product.id];
-                  return (
-                    <div
-                      key={product.id}
-                      onClick={() => navigate(`/product/${product.id}`)}
-                      className={`glass-panel glass-panel-hover rounded-2xl p-4 ${isDeal ? 'border-red-500/30 hover:border-red-500/60' : ''} flex flex-col group cursor-pointer relative`}
-                    >
-                      {isDeal && (
-                        <span className="absolute top-6 left-6 bg-red-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full z-10 uppercase tracking-widest shadow-md">
-                          -{discountRate}% Deal
-                        </span>
-                      )}
-
-                      {/* Inset Image Frame */}
-                      <div className="relative aspect-square overflow-hidden bg-black/30 border border-white/5 rounded-xl flex items-center justify-center p-4 shadow-[inset_0_0_20px_rgba(20,184,166,0.04)] mb-4 backdrop-blur-sm">
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          loading="lazy"
-                          decoding="async"
-                          onError={(e) => {
-                            e.target.src = getProductFallbackImage(product);
-                          }}
-                          className="w-full h-full object-contain rounded-lg transform group-hover:scale-105 transition-all duration-500"
-                        />
-                        <button
-                          onClick={(e) => toggleWishlist(e, product.id)}
-                          className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 text-gray-450 hover:text-red-500 rounded-full border border-white/5 transition-all backdrop-blur-sm"
-                        >
-                          <Heart size={14} fill={isWishlisted ? "#EF4444" : "none"} className={isWishlisted ? "text-red-500" : ""} />
-                        </button>
-                      </div>
-
-                      {/* Metadata & Info */}
-                      <div className="space-y-2 flex-grow flex flex-col justify-between relative z-10">
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-bazaario-primary uppercase font-extrabold tracking-wider">
-                            {product.category?.name}
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {products.map((product) => {
+                    const isDeal = product.onDeal;
+                    const discountRate = product.discountPercent;
+                    const originalPrice = isDeal ? (product.price / (1 - (discountRate / 100))) : (product.price * 1.25);
+                    const isWishlisted = !!wishlist[product.id];
+                    return (
+                      <div
+                        key={product.id}
+                        onClick={() => navigate(`/product/${product.id}`)}
+                        className={`glass-panel glass-panel-hover virtualized-card rounded-2xl p-4 ${isDeal ? 'border-red-500/30 hover:border-red-500/60' : ''} flex flex-col group cursor-pointer relative`}
+                      >
+                        {isDeal && (
+                          <span className="absolute top-6 left-6 bg-red-500 text-black text-[9px] font-black px-2 py-0.5 rounded-full z-10 uppercase tracking-widest shadow-md">
+                            -{discountRate}% Deal
                           </span>
-                          <h4 className="font-semibold text-white text-sm line-clamp-1 group-hover:text-bazaario-primary transition-all duration-300">
-                            {product.name}
-                          </h4>
+                        )}
+
+                        {/* Inset Image Frame */}
+                        <div className="relative aspect-square overflow-hidden bg-black/30 border border-white/5 rounded-xl flex items-center justify-center p-4 shadow-[inset_0_0_20px_rgba(20,184,166,0.04)] mb-4 backdrop-blur-sm">
+                          <img
+                            src={product.imageUrl}
+                            alt={product.name}
+                            loading="lazy"
+                            decoding="async"
+                            onError={(e) => {
+                              e.target.src = getProductFallbackImage(product);
+                            }}
+                            className="w-full h-full object-contain rounded-lg transform group-hover:scale-105 transition-all duration-500"
+                          />
+                          <button
+                            onClick={(e) => toggleWishlist(e, product.id)}
+                            className="absolute top-3 right-3 p-2 bg-black/40 hover:bg-black/60 text-gray-450 hover:text-red-500 rounded-full border border-white/5 transition-all backdrop-blur-sm"
+                          >
+                            <Heart size={14} fill={isWishlisted ? "#EF4444" : "none"} className={isWishlisted ? "text-red-500" : ""} />
+                          </button>
                         </div>
 
-                        {/* Stars */}
-                        <div className="flex text-yellow-400 gap-0.5 pt-1">
-                          {[1, 2, 3, 4, 5].map((s) => (
-                            <Star key={s} size={12} fill="currentColor" className="text-yellow-400" />
-                          ))}
-                        </div>
-
-                        {/* Price Matrix */}
-                        <div className="flex items-center gap-2 pt-1.5">
-                          <span className="text-sm font-bold text-white">₹{product.price.toFixed(2)}</span>
-                          <span className="text-[10px] text-gray-500 line-through">₹{originalPrice.toFixed(2)}</span>
-                          {isDeal && (
-                            <span className="text-[9px] bg-red-500/10 border border-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
-                              Deal
+                        {/* Metadata & Info */}
+                        <div className="space-y-2 flex-grow flex flex-col justify-between relative z-10">
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-bazaario-primary uppercase font-extrabold tracking-wider">
+                              {product.category?.name}
                             </span>
-                          )}
+                            <h4 className="font-semibold text-white text-sm line-clamp-1 group-hover:text-bazaario-primary transition-all duration-300">
+                              {product.name}
+                            </h4>
+                          </div>
+
+                          {/* Stars */}
+                          <div className="flex text-yellow-400 gap-0.5 pt-1">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star key={s} size={12} fill="currentColor" className="text-yellow-400" />
+                            ))}
+                          </div>
+
+                          {/* Price Matrix */}
+                          <div className="flex items-center gap-2 pt-1.5">
+                            <span className="text-sm font-bold text-white">₹{product.price.toFixed(2)}</span>
+                            <span className="text-[10px] text-gray-500 line-through">₹{originalPrice.toFixed(2)}</span>
+                            {isDeal && (
+                              <span className="text-[9px] bg-red-500/10 border border-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-black uppercase tracking-wider">
+                                Deal
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Pill button */}
+                          <button
+                            onClick={(e) => handleAddToCartClick(e, product.id)}
+                            className="w-full bg-bazaario-primary hover:bg-bazaario-primaryHover text-black text-xs font-bold py-2.5 rounded-full mt-3 transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(20,184,166,0.15)] hover:shadow-[0_0_20px_rgba(20,184,166,0.35)] hover:scale-[1.02]"
+                          >
+                            Add to Cart
+                          </button>
                         </div>
-
-                        {/* Pill button */}
-                        <button
-                          onClick={(e) => handleAddToCartClick(e, product.id)}
-                          className="w-full bg-bazaario-primary hover:bg-bazaario-primaryHover text-black text-xs font-bold py-2.5 rounded-full mt-3 transition-all flex items-center justify-center gap-1.5 shadow-[0_0_12px_rgba(20,184,166,0.15)] hover:shadow-[0_0_20px_rgba(20,184,166,0.35)] hover:scale-[1.02]"
-                        >
-                          Add to Cart
-                        </button>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 mt-10 pt-6 border-t border-bazaario-border/60">
-                <button
-                  onClick={() => updateFilters({ page: pageParam - 1 })}
-                  disabled={pageParam === 0}
-                  className="p-2 glass-panel hover:bg-white/5 text-gray-400 hover:text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <span className="text-xs text-gray-400">
-                  Page <span className="text-white font-semibold">{pageParam + 1}</span> of{' '}
-                  <span className="text-white font-semibold">{totalPages}</span>
-                </span>
-                <button
-                  onClick={() => updateFilters({ page: pageParam + 1 })}
-                  disabled={pageParam === totalPages - 1}
-                  className="p-2 glass-panel hover:bg-white/5 text-gray-400 hover:text-white rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronRight size={16} />
-                </button>
+                  {/* Infinite Scroll loading indicators appended at bottom */}
+                  {loading && page > 0 && (
+                    <>
+                      {[1, 2, 3, 4].map((n) => (
+                        <ProductSkeleton key={`append-sk-${n}`} />
+                      ))}
+                    </>
+                  )}
+                </div>
+
+                {/* Observer sentinel element */}
+                <div ref={observerTarget} className="h-20 w-full flex items-center justify-center pt-4">
+                  {hasMore && !loading && (
+                    <span className="text-xs text-gray-500 animate-pulse">Scroll down to load more items...</span>
+                  )}
+                </div>
               </div>
             )}
           </main>
