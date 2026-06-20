@@ -1,19 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Search, Heart, ShoppingBag, User, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import api from '../api';
 
 export default function Header() {
   const { user, logout, isAdmin } = useAuth();
   const { cartItemsCount } = useCart();
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
+  const searchRef = useRef(null);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const delayDebounce = setTimeout(() => {
+      api.get(`/api/products/autocomplete?q=${encodeURIComponent(searchQuery)}`)
+        .then((res) => {
+          setSuggestions(res.data || []);
+        })
+        .catch((err) => {
+          console.error("Autocomplete error:", err);
+        });
+    }, 250);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
+      setShowSuggestions(false);
       navigate(`/shop?search=${encodeURIComponent(searchQuery)}`);
     }
   };
@@ -34,19 +67,57 @@ export default function Header() {
           <Link to="/about" className="hover:text-bazaario-primary transition-all">About</Link>
         </nav>
 
-        {/* Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="relative max-w-md w-full hidden sm:block">
-          <input
-            type="text"
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#13131A] text-white text-sm pl-4 pr-10 py-2 rounded-full border border-bazaario-border focus:outline-none focus:border-bazaario-primary transition-all"
-          />
-          <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-bazaario-primary">
-            <Search size={18} />
-          </button>
-        </form>
+        {/* Search Bar with Autocomplete */}
+        <div ref={searchRef} className="relative max-w-md w-full hidden sm:block">
+          <form onSubmit={handleSearchSubmit}>
+            <input
+              type="text"
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              className="w-full bg-[#13131A] text-white text-sm pl-4 pr-10 py-2 rounded-full border border-bazaario-border focus:outline-none focus:border-bazaario-primary transition-all"
+            />
+            <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-bazaario-primary">
+              <Search size={18} />
+            </button>
+          </form>
+
+          {/* Autocomplete Suggestions */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute left-0 right-0 mt-2 bg-[#13131A] border border-bazaario-border rounded-xl shadow-2xl overflow-hidden z-50">
+              <ul className="divide-y divide-bazaario-border/30">
+                {suggestions.map((product) => (
+                  <li key={product.id}>
+                    <button
+                      onClick={() => {
+                        setSearchQuery(product.name);
+                        setShowSuggestions(false);
+                        navigate(`/product/${product.id}`);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-[#1E1E26]/50 flex items-center gap-3 transition-colors text-sm text-gray-200"
+                    >
+                      {product.imageUrl && (
+                        <img 
+                          src={product.imageUrl} 
+                          alt={product.name} 
+                          className="w-8 h-8 rounded object-cover bg-gray-800"
+                        />
+                      )}
+                      <div className="flex-1 truncate">
+                        <span className="font-medium text-white block truncate">{product.name}</span>
+                        <span className="text-xs text-bazaario-primary">₹{product.price}</span>
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
 
         {/* Right Actions */}
         <div className="flex items-center gap-6 flex-shrink-0">
