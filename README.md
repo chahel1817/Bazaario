@@ -33,7 +33,10 @@ Bazaario is a production-ready, full-stack e-commerce platform designed with a m
 * **Flyway Migrations**: Automated, versioned database schema migrations (V1 to V5) for reliable and repeatable environment setups.
 * **Pagination & DoS Prevention**:
   API requests supporting pagination are capped at a maximum page size of `100` at the controller layer to guard against memory exhaustion and database DoS vectors.
-
+* **Redis Caching**:
+  Integrated Redis caching (`@Cacheable`, `@CacheEvict`) for frequently accessed resources like products to reduce database load and improve API response times.
+* **Asynchronous Email Notifications**:
+  Leverages Spring's `@Async` and JavaMailSender to send non-blocking HTML order confirmation emails upon successful payment.
 ---
 
 ## 🛠️ Technology Stack
