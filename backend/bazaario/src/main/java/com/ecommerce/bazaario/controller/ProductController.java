@@ -36,6 +36,11 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAllProducts(categoryId, search, pageable));
     }
 
+    @GetMapping("/autocomplete")
+    public ResponseEntity<java.util.List<Product>> autocomplete(@RequestParam String q) {
+        return ResponseEntity.ok(productService.getAutocompleteSuggestions(q));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductById(id));

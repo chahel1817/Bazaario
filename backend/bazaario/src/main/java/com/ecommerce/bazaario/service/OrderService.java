@@ -6,6 +6,8 @@ import com.ecommerce.bazaario.exception.ResourceNotFoundException;
 import com.ecommerce.bazaario.repository.AddressRepository;
 import com.ecommerce.bazaario.repository.OrderRepository;
 import com.ecommerce.bazaario.repository.ProductRepository;
+import com.ecommerce.bazaario.event.OrderPlacedEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +29,9 @@ public class OrderService {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
@@ -102,6 +107,9 @@ public class OrderService {
 
         // Clear cart right after the order is successfully placed (prevents double-ordering or check-out abandonment issues)
         cartService.clearCart(cart);
+
+        // Publish OrderPlacedEvent to notify event listeners asynchronously
+        eventPublisher.publishEvent(new OrderPlacedEvent(this, user.getEmail(), savedOrder.getId().toString(), savedOrder.getTotalAmount().doubleValue()));
 
         return savedOrder;
     }

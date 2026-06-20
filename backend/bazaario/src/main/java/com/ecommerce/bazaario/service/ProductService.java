@@ -11,6 +11,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+
 @Service
 public class ProductService {
 
@@ -31,6 +34,7 @@ public class ProductService {
         return productRepository.findAll(pageable);
     }
 
+    @Cacheable(value = "products", key = "#id")
     public Product getProductById(Long id) {
         return productRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + id));
@@ -45,6 +49,7 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    @CacheEvict(value = "products", key = "#id")
     public Product updateProduct(Long id, ProductRequest request) {
         Product product = getProductById(id);
         Category category = categoryRepository.findById(request.getCategoryId())
@@ -54,9 +59,17 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    @CacheEvict(value = "products", key = "#id")
     public void deleteProduct(Long id) {
         Product product = getProductById(id);
         productRepository.delete(product);
+    }
+
+    public java.util.List<Product> getAutocompleteSuggestions(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return productRepository.findTop8ByNameContainingIgnoreCase(query);
     }
 
     private void updateProductFields(Product product, ProductRequest request, Category category) {
