@@ -58,3 +58,55 @@ body {
 .animate-spin-slow {
   animation: spin-slow 15s linear infinite;
 }
+
+/* Glassmorphism Classes */
+.glass-panel {
+  background: rgba(19, 19, 26, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-panel-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-panel-hover:hover {
+  background: rgba(30, 30, 38, 0.6);
+  border-color: rgba(20, 184, 166, 0.35);
+  box-shadow: 0 0 25px rgba(20, 184, 166, 0.12);
+  transform: translateY(-2px);
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Glowing background spot elements */
+.glow-spot-teal {
+  background: radial-gradient(circle at center, rgba(20, 184, 166, 0.15) 0%, rgba(20, 184, 166, 0) 70%);
+}
+
+.glow-spot-cyan {
+  background: radial-gradient(circle at center, rgba(6, 182, 212, 0.15) 0%, rgba(6, 182, 212, 0) 70%);
+}
+
+/* Accessibility Focus States */
+button:focus-visible, 
+a:focus-visible, 
+input:focus-visible, 
+select:focus-visible, 
+textarea:focus-visible,
+.glass-panel:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.8) !important;
+  outline-offset: 2px !important;
+}
+
