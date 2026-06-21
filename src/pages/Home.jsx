@@ -17,8 +17,15 @@ export default function Home() {
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
       try {
+        const cached = sessionStorage.getItem('home_products');
+        if (cached) {
+          setProducts(JSON.parse(cached));
+          setLoading(false);
+        }
         const response = await api.get('/api/products?page=0&size=4');
-        setProducts(response.data.content || []);
+        const data = response.data.content || [];
+        setProducts(data);
+        sessionStorage.setItem('home_products', JSON.stringify(data));
       } catch (error) {
         console.error('Failed to load products', error);
       } finally {
@@ -28,8 +35,14 @@ export default function Home() {
 
     const fetchCategories = async () => {
       try {
+        const cached = sessionStorage.getItem('home_categories');
+        if (cached) {
+          setDbCategories(JSON.parse(cached));
+        }
         const response = await api.get('/api/categories');
-        setDbCategories(response.data || []);
+        const data = response.data || [];
+        setDbCategories(data);
+        sessionStorage.setItem('home_categories', JSON.stringify(data));
       } catch (error) {
         console.error('Failed to load categories', error);
       }

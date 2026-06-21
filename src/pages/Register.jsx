@@ -497,6 +497,26 @@ export default function Register() {
           </div>
         </div>
       )}
+      {/* Loading Overlay Modal */}
+      {loading && (
+        <div className="fixed inset-0 z-[70] bg-black/90 flex flex-col items-center justify-center p-4 backdrop-blur-md">
+          <div className="flex flex-col items-center space-y-6">
+            <div className="relative">
+              <div className="w-20 h-20 border-4 border-bazaario-border rounded-full animate-pulse"></div>
+              <div className="w-20 h-20 border-4 border-bazaario-primary rounded-full animate-spin border-t-transparent absolute top-0 left-0"></div>
+              <ShoppingBag className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-bazaario-primary" size={24} />
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-2xl font-extrabold text-white tracking-tight animate-pulse">
+                Creating your account...
+              </h3>
+              <p className="text-sm text-gray-400 max-w-xs mx-auto">
+                Please wait a moment while we securely set up your account and prepare your personalized experience.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -31,6 +31,9 @@ const ProductSkeleton = () => (
   </div>
 );
 
+const globalProductCache = {};
+let globalCategoryCache = [];
+
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -63,8 +66,13 @@ export default function Shop() {
 
   useEffect(() => {
     const fetchCategories = async () => {
+      if (globalCategoryCache.length > 0) {
+        setCategories(globalCategoryCache);
+        return;
+      }
       try {
         const response = await api.get('/api/categories');
+        globalCategoryCache = response.data;
         setCategories(response.data);
       } catch (error) {
         console.error("Failed to load categories", error);
@@ -84,6 +92,28 @@ export default function Shop() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
+        const cacheKey = `${page}-${categoryIdParam}-${searchParam}-${sortByParam}-${directionParam}`;
+        if (globalProductCache[cacheKey]) {
+          const responseData = globalProductCache[cacheKey];
+          let fetchedList = responseData.content || [];
+          if (maxPrice < 1000) {
+            fetchedList = fetchedList.filter(p => p.price <= maxPrice);
+          }
+          
+          setProducts(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const uniqueNew = fetchedList.filter(p => !existingIds.has(p.id));
+            return page === 0 ? fetchedList : [...prev, ...uniqueNew];
+          });
+          
+          const currentTotalPages = responseData.totalPages || 0;
+          setTotalPages(currentTotalPages);
+          setTotalElements(responseData.totalElements || 0);
+          setHasMore(page < currentTotalPages - 1);
+          setLoading(false);
+          return;
+        }
+
         let url = `/api/products?page=${page}&size=8&sortBy=${sortByParam}&direction=${directionParam}`;
         if (categoryIdParam && categoryIdParam !== 'all') {
           url += `&categoryId=${categoryIdParam}`;
@@ -92,6 +122,7 @@ export default function Shop() {
           url += `&search=${encodeURIComponent(searchParam)}`;
         }
         const response = await api.get(url);
+        globalProductCache[cacheKey] = response.data;
         
         let fetchedList = response.data.content || [];
         if (maxPrice < 1000) {

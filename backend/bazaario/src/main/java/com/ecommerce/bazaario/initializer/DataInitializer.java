@@ -122,7 +122,7 @@ public class DataInitializer implements CommandLineRunner {
             alreadyCustomSeeded = hasHighPrices;
         }
 
-        if (currentCount >= 1000 && alreadyCustomSeeded) {
+        if (currentCount >= 5000 && alreadyCustomSeeded) {
             System.out.println("Database catalog already seeded with " + currentCount + " products. Skipping initialization.");
             return;
         }
@@ -153,7 +153,7 @@ public class DataInitializer implements CommandLineRunner {
             categories.add(categoryRepository.save(cat));
         }
 
-        System.out.println("Generating 1000 products using Faker...");
+        System.out.println("Generating 5000 products using Faker...");
         Faker faker = new Faker();
         List<Product> productsToSave = new ArrayList<>();
 
@@ -161,7 +161,7 @@ public class DataInitializer implements CommandLineRunner {
 
         for (int i = 0; i < categoriesCount; i++) {
             Category cat = categories.get(i);
-            int countForCategory = (i == categoriesCount - 1) ? 165 : 167; // 167 * 5 + 165 = 1000
+            int countForCategory = (i == categoriesCount - 1) ? 835 : 833; // 833 * 5 + 835 = 5000
             String[] imageUrls = getImagesForCategory(cat.getName());
 
             for (int j = 0; j < countForCategory; j++) {
