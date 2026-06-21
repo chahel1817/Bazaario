@@ -1,7 +1,7 @@
 package com.ecommerce.bazaario.controller;
 
 import com.ecommerce.bazaario.dto.ProductRequest;
-import com.ecommerce.bazaario.entity.Product;
+import com.ecommerce.bazaario.dto.ProductResponse;
 import com.ecommerce.bazaario.service.ProductService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +20,7 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping
-    public ResponseEntity<Page<Product>> getAllProducts(
+    public ResponseEntity<Page<ProductResponse>> getAllProducts(
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "0") int page,
@@ -37,22 +37,22 @@ public class ProductController {
     }
 
     @GetMapping("/autocomplete")
-    public ResponseEntity<java.util.List<Product>> autocomplete(@RequestParam String q) {
+    public ResponseEntity<java.util.List<ProductResponse>> autocomplete(@RequestParam String q) {
         return ResponseEntity.ok(productService.getAutocompleteSuggestions(q));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
         return ResponseEntity.ok(productService.getProductById(id));
     }
 
     @PostMapping
-    public ResponseEntity<Product> createProduct(@Valid @RequestBody ProductRequest request) {
+    public ResponseEntity<ProductResponse> createProduct(@Valid @RequestBody ProductRequest request) {
         return ResponseEntity.ok(productService.createProduct(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequest request) {
         return ResponseEntity.ok(productService.updateProduct(id, request));
     }
 

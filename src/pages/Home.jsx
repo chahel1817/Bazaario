@@ -15,41 +15,51 @@ export default function Home() {
 
   // Load featured products and categories
   useEffect(() => {
-    const fetchFeaturedProducts = async () => {
+    const cachedProducts = sessionStorage.getItem('home_products');
+    const cachedCategories = sessionStorage.getItem('home_categories');
+
+    if (cachedProducts) {
+      setProducts(JSON.parse(cachedProducts));
+    }
+    if (cachedCategories) {
+      setDbCategories(JSON.parse(cachedCategories));
+    }
+    if (cachedProducts || cachedCategories) {
+      setLoading(false);
+    }
+
+    const fetchHomeData = async () => {
       try {
-        const cached = sessionStorage.getItem('home_products');
-        if (cached) {
-          setProducts(JSON.parse(cached));
-          setLoading(false);
+        const response = await api.get('/api/home/summary');
+        const nextProducts = response.data.products || [];
+        const nextCategories = response.data.categories || [];
+
+        setProducts(nextProducts);
+        setDbCategories(nextCategories);
+        sessionStorage.setItem('home_products', JSON.stringify(nextProducts));
+        sessionStorage.setItem('home_categories', JSON.stringify(nextCategories));
+      } catch (summaryError) {
+        try {
+          const [productsResponse, categoriesResponse] = await Promise.all([
+            api.get('/api/products?page=0&size=4'),
+            api.get('/api/categories')
+          ]);
+          const nextProducts = productsResponse.data.content || [];
+          const nextCategories = categoriesResponse.data || [];
+
+          setProducts(nextProducts);
+          setDbCategories(nextCategories);
+          sessionStorage.setItem('home_products', JSON.stringify(nextProducts));
+          sessionStorage.setItem('home_categories', JSON.stringify(nextCategories));
+        } catch (fallbackError) {
+          console.error('Failed to load homepage data', fallbackError);
         }
-        const response = await api.get('/api/products?page=0&size=4');
-        const data = response.data.content || [];
-        setProducts(data);
-        sessionStorage.setItem('home_products', JSON.stringify(data));
-      } catch (error) {
-        console.error('Failed to load products', error);
       } finally {
         setLoading(false);
       }
     };
 
-    const fetchCategories = async () => {
-      try {
-        const cached = sessionStorage.getItem('home_categories');
-        if (cached) {
-          setDbCategories(JSON.parse(cached));
-        }
-        const response = await api.get('/api/categories');
-        const data = response.data || [];
-        setDbCategories(data);
-        sessionStorage.setItem('home_categories', JSON.stringify(data));
-      } catch (error) {
-        console.error('Failed to load categories', error);
-      }
-    };
-
-    fetchFeaturedProducts();
-    fetchCategories();
+    fetchHomeData();
   }, []);
 
   // Flash sale countdown timer

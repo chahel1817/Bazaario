@@ -1,5 +1,6 @@
 package com.ecommerce.bazaario.controller;
 
+import com.ecommerce.bazaario.dto.CategoryResponse;
 import com.ecommerce.bazaario.entity.Category;
 import com.ecommerce.bazaario.service.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,7 +16,7 @@ public class CategoryController {
     private CategoryService categoryService;
 
     @GetMapping
-    public ResponseEntity<List<Category>> getAllCategories() {
+    public ResponseEntity<List<CategoryResponse>> getAllCategories() {
         return ResponseEntity.ok(categoryService.getAllCategories());
     }
 
