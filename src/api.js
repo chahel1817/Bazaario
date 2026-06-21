@@ -20,4 +20,22 @@ api.interceptors.request.use(
   }
 );
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || '';
+    const hadAuthHeader = !!error.config?.headers?.Authorization;
+    const isProtectedAuthFailure = status === 401 || (status === 403 && url.startsWith('/api/cart'));
+
+    if (hadAuthHeader && isProtectedAuthFailure) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.dispatchEvent(new Event('bazaario:auth-expired'));
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export default api;

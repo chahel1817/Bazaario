@@ -1,7 +1,7 @@
 package com.ecommerce.bazaario.controller;
 
 import com.ecommerce.bazaario.dto.CartItemRequest;
-import com.ecommerce.bazaario.entity.Cart;
+import com.ecommerce.bazaario.dto.CartResponse;
 import com.ecommerce.bazaario.entity.User;
 import com.ecommerce.bazaario.service.AuthService;
 import com.ecommerce.bazaario.service.CartService;
@@ -21,19 +21,19 @@ public class CartController {
     private AuthService authService;
 
     @GetMapping
-    public ResponseEntity<Cart> getCart() {
+    public ResponseEntity<CartResponse> getCart() {
         User user = authService.getCurrentUser();
-        return ResponseEntity.ok(cartService.getCartByUser(user));
+        return ResponseEntity.ok(cartService.getCartResponseByUser(user));
     }
 
     @PostMapping("/items")
-    public ResponseEntity<Cart> addItemToCart(@Valid @RequestBody CartItemRequest request) {
+    public ResponseEntity<CartResponse> addItemToCart(@Valid @RequestBody CartItemRequest request) {
         User user = authService.getCurrentUser();
         return ResponseEntity.ok(cartService.addItemToCart(user, request));
     }
 
     @PutMapping("/items/{id}")
-    public ResponseEntity<Cart> updateCartItemQuantity(
+    public ResponseEntity<CartResponse> updateCartItemQuantity(
             @PathVariable Long id, 
             @RequestParam int quantity) {
         User user = authService.getCurrentUser();
@@ -41,7 +41,7 @@ public class CartController {
     }
 
     @DeleteMapping("/items/{id}")
-    public ResponseEntity<Cart> removeCartItem(@PathVariable Long id) {
+    public ResponseEntity<CartResponse> removeCartItem(@PathVariable Long id) {
         User user = authService.getCurrentUser();
         return ResponseEntity.ok(cartService.removeCartItem(user, id));
     }

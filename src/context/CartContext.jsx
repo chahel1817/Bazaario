@@ -28,6 +28,10 @@ export const CartProvider = ({ children }) => {
       const response = await api.get('/api/cart');
       setCart(response.data);
     } catch (error) {
+      if ([401, 403].includes(error.response?.status)) {
+        setCart(null);
+        return;
+      }
       console.error("Failed to fetch cart", error);
     } finally {
       setLoading(false);

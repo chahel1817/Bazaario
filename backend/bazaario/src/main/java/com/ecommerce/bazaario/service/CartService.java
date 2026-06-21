@@ -1,6 +1,7 @@
 package com.ecommerce.bazaario.service;
 
 import com.ecommerce.bazaario.dto.CartItemRequest;
+import com.ecommerce.bazaario.dto.CartResponse;
 import com.ecommerce.bazaario.entity.Cart;
 import com.ecommerce.bazaario.entity.CartItem;
 import com.ecommerce.bazaario.entity.Product;
@@ -37,7 +38,12 @@ public class CartService {
     }
 
     @Transactional
-    public Cart addItemToCart(User user, CartItemRequest request) {
+    public CartResponse getCartResponseByUser(User user) {
+        return CartResponse.from(getCartByUser(user));
+    }
+
+    @Transactional
+    public CartResponse addItemToCart(User user, CartItemRequest request) {
         Cart cart = getCartByUser(user);
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found with id: " + request.getProductId()));
@@ -63,11 +69,11 @@ public class CartService {
             cartItemRepository.save(cartItem);
         }
 
-        return getCartByUser(user);
+        return CartResponse.from(getCartByUser(user));
     }
 
     @Transactional
-    public Cart updateCartItemQuantity(User user, Long cartItemId, int quantity) {
+    public CartResponse updateCartItemQuantity(User user, Long cartItemId, int quantity) {
         Cart cart = getCartByUser(user);
         CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
@@ -87,11 +93,11 @@ public class CartService {
             cartItemRepository.save(cartItem);
         }
 
-        return getCartByUser(user);
+        return CartResponse.from(getCartByUser(user));
     }
 
     @Transactional
-    public Cart removeCartItem(User user, Long cartItemId) {
+    public CartResponse removeCartItem(User user, Long cartItemId) {
         Cart cart = getCartByUser(user);
         CartItem cartItem = cartItemRepository.findById(cartItemId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cart item not found with id: " + cartItemId));
@@ -101,7 +107,7 @@ public class CartService {
         }
 
         cartItemRepository.delete(cartItem);
-        return getCartByUser(user);
+        return CartResponse.from(getCartByUser(user));
     }
 
     @Transactional

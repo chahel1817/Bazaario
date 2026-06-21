@@ -20,6 +20,16 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, [token]);
 
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setToken(null);
+      setUser(null);
+    };
+
+    window.addEventListener('bazaario:auth-expired', handleAuthExpired);
+    return () => window.removeEventListener('bazaario:auth-expired', handleAuthExpired);
+  }, []);
+
   const login = async (email, password) => {
     try {
       const response = await api.post('/api/auth/login', { email, password });
